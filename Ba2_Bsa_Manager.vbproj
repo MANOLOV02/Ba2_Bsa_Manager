@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BSA_BA2_Library_DLL\BSA_BA2_Library_DLL.vbproj" />
+    <ProjectReference Include="..\Ba2_Bsa_Library\BSA_BA2_Library_DLL.vbproj" />
   </ItemGroup>
 
   <ItemGroup>
