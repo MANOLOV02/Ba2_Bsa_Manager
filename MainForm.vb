@@ -1118,9 +1118,17 @@ Partial Class Mainform_form
                     Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
                         Max_Writed = ctx.Entries.Count
                         Count_Writed = 0
+                        ' ⛔ Try/Finally: el evento es Shared, o sea una raiz ESTATICA viva todo el proceso, y `Writed`
+                        ' es un metodo de INSTANCIA, asi que el delegate captura Me. Si `Write` sale por excepcion —disco
+                        ' lleno, DDS invalido, nombre largo: hay ~12 puntos que tiran— el RemoveHandler nunca corria y el
+                        ' Form quedaba enraizado con todos los payloads descomprimidos de la pestania (GBs). Y en el pack
+                        ' siguiente el RaiseEvent disparaba tambien a los handlers zombis, una vez por entrada.
                         AddHandler Ba2WriterDX10.Writed, AddressOf Writed
-                        Ba2WriterDX10.Write(fs, ves, optDX)
-                        RemoveHandler Ba2WriterDX10.Writed, AddressOf Writed
+                        Try
+                            Ba2WriterDX10.Write(fs, ves, optDX)
+                        Finally
+                            RemoveHandler Ba2WriterDX10.Writed, AddressOf Writed
+                        End Try
                         Progreso(0, 100)
                     End Using
                     ctx.Dirty = False
@@ -1143,9 +1151,17 @@ Partial Class Mainform_form
                     Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
                         Max_Writed = ctx.Entries.Count
                         Count_Writed = 0
+                        ' ⛔ Try/Finally: el evento es Shared, o sea una raiz ESTATICA viva todo el proceso, y `Writed`
+                        ' es un metodo de INSTANCIA, asi que el delegate captura Me. Si `Write` sale por excepcion —disco
+                        ' lleno, DDS invalido, nombre largo: hay ~12 puntos que tiran— el RemoveHandler nunca corria y el
+                        ' Form quedaba enraizado con todos los payloads descomprimidos de la pestania (GBs). Y en el pack
+                        ' siguiente el RaiseEvent disparaba tambien a los handlers zombis, una vez por entrada.
                         AddHandler Ba2WriterGNRL.Writed, AddressOf Writed
-                        Ba2WriterGNRL.Write(fs, vesG, optG)
-                        RemoveHandler Ba2WriterGNRL.Writed, AddressOf Writed
+                        Try
+                            Ba2WriterGNRL.Write(fs, vesG, optG)
+                        Finally
+                            RemoveHandler Ba2WriterGNRL.Writed, AddressOf Writed
+                        End Try
                         Progreso(0, 100)
                     End Using
                     ctx.Dirty = False
@@ -1197,9 +1213,17 @@ Partial Class Mainform_form
                 Using fs As New FileStream(texPath, FileMode.Create, FileAccess.Write, FileShare.None)
                     Max_Writed = ctx.Entries.Count
                     Count_Writed = 0
+                    ' ⛔ Try/Finally: el evento es Shared, o sea una raiz ESTATICA viva todo el proceso, y `Writed`
+                    ' es un metodo de INSTANCIA, asi que el delegate captura Me. Si `Write` sale por excepcion —disco
+                    ' lleno, DDS invalido, nombre largo: hay ~12 puntos que tiran— el RemoveHandler nunca corria y el
+                    ' Form quedaba enraizado con todos los payloads descomprimidos de la pestania (GBs). Y en el pack
+                    ' siguiente el RaiseEvent disparaba tambien a los handlers zombis, una vez por entrada.
                     AddHandler Ba2WriterDX10.Writed, AddressOf Writed
-                    Ba2WriterDX10.Write(fs, vesTex, optDX2)
-                    RemoveHandler Ba2WriterDX10.Writed, AddressOf Writed
+                    Try
+                        Ba2WriterDX10.Write(fs, vesTex, optDX2)
+                    Finally
+                        RemoveHandler Ba2WriterDX10.Writed, AddressOf Writed
+                    End Try
                     Progreso(0, 100)
                 End Using
 
@@ -1212,9 +1236,17 @@ Partial Class Mainform_form
                 Using fs As New FileStream(genPath, FileMode.Create, FileAccess.Write, FileShare.None)
                     Max_Writed = ctx.Entries.Count
                     Count_Writed = 0
+                    ' ⛔ Try/Finally: el evento es Shared, o sea una raiz ESTATICA viva todo el proceso, y `Writed`
+                    ' es un metodo de INSTANCIA, asi que el delegate captura Me. Si `Write` sale por excepcion —disco
+                    ' lleno, DDS invalido, nombre largo: hay ~12 puntos que tiran— el RemoveHandler nunca corria y el
+                    ' Form quedaba enraizado con todos los payloads descomprimidos de la pestania (GBs). Y en el pack
+                    ' siguiente el RaiseEvent disparaba tambien a los handlers zombis, una vez por entrada.
                     AddHandler Ba2WriterGNRL.Writed, AddressOf Writed
-                    Ba2WriterGNRL.Write(fs, vesGen, optG2)
-                    RemoveHandler Ba2WriterGNRL.Writed, AddressOf Writed
+                    Try
+                        Ba2WriterGNRL.Write(fs, vesGen, optG2)
+                    Finally
+                        RemoveHandler Ba2WriterGNRL.Writed, AddressOf Writed
+                    End Try
                     Progreso(0, 100)
                 End Using
 
@@ -1239,9 +1271,14 @@ Partial Class Mainform_form
                 Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
                     Max_Writed = ctx.Entries.Count
                     Count_Writed = 0
+                    ' ⛔ Mismo caso que los cuatro de arriba: evento Shared + handler de instancia. El
+                    ' quinto sitio, el de BSA, tambien quedaba sin desenganchar si Write tiraba.
                     AddHandler BsaWriter.Writed, AddressOf Writed
-                    BsaWriter.Write(fs, ves, opt)
-                    RemoveHandler BsaWriter.Writed, AddressOf Writed
+                    Try
+                        BsaWriter.Write(fs, ves, opt)
+                    Finally
+                        RemoveHandler BsaWriter.Writed, AddressOf Writed
+                    End Try
                     Progreso(0, 100)
                 End Using
 
