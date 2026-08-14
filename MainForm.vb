@@ -488,8 +488,15 @@ Partial Class Mainform_form
 
     ' ========= lectura / creación de pestañas =========
 
+    ''' <summary>⛔ SI LA LECTURA MUERE A MITAD, LA PESTAÑA SE DESCARTA. <c>CreateEmptyTab</c> agrega el
+    ''' TabPage ANTES de leer, y el <c>Finally</c> rotulaba "Opened" pasara lo que pasara: con un archive
+    ''' truncado, un chunk corrupto, un TileMode no soportado o el wrapper nativo desajustado, el usuario
+    ''' veia una pestaña con el nombre del archive, estado "Opened", y un SUBCONJUNTO de las entradas. Un
+    ''' Save sobre eso escribe un BA2 TRUNCADO sin un solo aviso — se pierden los archivos que nunca se
+    ''' leyeron. <c>ctx.Dirty</c> es False en una apertura fresca, asi que cerrarla no pregunta nada.</summary>
     Private Sub OpenArchiveInNewTab(path As String)
         Dim ctx As TabContext = Nothing
+        Dim leidoCompleto As Boolean = False
         Try
             Dim kind As GameKindUI
             Dim fo4Type As Fo4Ba2Type = Fo4Ba2Type.Unknown
@@ -530,14 +537,26 @@ Partial Class Mainform_form
                 Next
 
             End Using
+            leidoCompleto = True
         Catch ex As Exception
             MsgBox("Error reading file:" + vbCrLf + ex.Message, vbCritical, "Error")
         Finally
             Progreso(0, 100)
-            ReindexEntries(ctx)
-            RefreshGrid(ctx)
-            RebuildDirectoryTree(ctx) ' << NUEVO
-            SetStatus("Opened", ctx)
+            If leidoCompleto Then
+                ReindexEntries(ctx)
+                RefreshGrid(ctx)
+                RebuildDirectoryTree(ctx) ' << NUEVO
+                SetStatus("Opened", ctx)
+            ElseIf ctx IsNot Nothing Then
+                ' Lectura incompleta: la pestaña se va. Ver la nota de la firma.
+                For i As Integer = tab.TabPages.Count - 1 To 0 Step -1
+                    If ReferenceEquals(tab.TabPages(i).Tag, ctx) Then
+                        CloseTabAt(i)
+                        Exit For
+                    End If
+                Next
+                SetStatus("Open failed - tab discarded", Nothing)
+            End If
             UpdateButtonsForGame()
         End Try
 
