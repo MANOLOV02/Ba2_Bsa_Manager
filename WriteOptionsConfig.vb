@@ -57,7 +57,7 @@ Public NotInheritable Class AppConfig
         Public Property Compression As String = "zip"
         ' Strings table
         Public Property IncludeStrings As Boolean = True
-        ' ZlibPreset: "Default" | "Fastest" | "Optimal"
+        ' ZlibPreset: "Default" | "Fastest" | "Maximum"
         Public Property ZlibPreset As String = "Default"
 
         Public Shared Function Defaults() As Ba2Group

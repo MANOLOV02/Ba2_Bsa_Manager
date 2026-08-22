@@ -35,7 +35,7 @@ Partial Class Mainform_form
         Public Property LastDirFilter As String = Nothing
 
         Public Property Dirty As Boolean
-        ' === NUEVO: referencias UI de esta pestaña ===
+        ' === Referencias UI de esta pestaña ===
         Public Property Grid As DataGridView
         Public Property Tree As TreeView
         Public Property SelectedDir As String = Nothing
@@ -170,7 +170,7 @@ Partial Class Mainform_form
         AddHandler btnclosetab.Click, AddressOf miCerrar_Click
         AddHandler miSalir.Click, Sub(sender As Object, e As EventArgs) Me.Close()
 
-        ' nuevos del menú Archivo
+        ' Menú Archivo: crear BSA/BA2
         AddHandler miCrearBSA.Click, AddressOf miCrearBSA_Click
         AddHandler miCrearBA2.Click, AddressOf miCrearBA2_Click
         AddHandler miCrearBA2Tex.Click, AddressOf miCrearBA2Tex_Click
@@ -488,12 +488,10 @@ Partial Class Mainform_form
 
     ' ========= lectura / creación de pestañas =========
 
-    ''' <summary>⛔ SI LA LECTURA MUERE A MITAD, LA PESTAÑA SE DESCARTA. <c>CreateEmptyTab</c> agrega el
-    ''' TabPage ANTES de leer, y el <c>Finally</c> rotulaba "Opened" pasara lo que pasara: con un archive
-    ''' truncado, un chunk corrupto, un TileMode no soportado o el wrapper nativo desajustado, el usuario
-    ''' veia una pestaña con el nombre del archive, estado "Opened", y un SUBCONJUNTO de las entradas. Un
-    ''' Save sobre eso escribe un BA2 TRUNCADO sin un solo aviso — se pierden los archivos que nunca se
-    ''' leyeron. <c>ctx.Dirty</c> es False en una apertura fresca, asi que cerrarla no pregunta nada.</summary>
+    ''' <summary>Si la lectura muere a mitad, la pestaña se descarta en vez de quedar en estado "Opened"
+    ''' con un subconjunto de entradas: un Save sobre eso escribiría un archive truncado sin aviso, y se
+    ''' perderían los archivos que nunca se leyeron. <c>ctx.Dirty</c> es False en una apertura fresca, asi
+    ''' que cerrar la pestaña no pregunta nada.</summary>
     Private Sub OpenArchiveInNewTab(path As String)
         Dim ctx As TabContext = Nothing
         Dim leidoCompleto As Boolean = False
@@ -519,7 +517,7 @@ Partial Class Mainform_form
                 For Each it In reader.EntriesFiles
                     val += 1
                     Progreso(val, max)
-                    Dim bytes = reader.ExtractToMemory(it.Index) ' ← lector
+                    Dim bytes = reader.ExtractToMemory(it.Index)
                     If kind = GameKindUI.FO4_BA2 AndAlso fo4Type = Fo4Ba2Type.DX10 AndAlso it.FileName.EndsWith(".dds", StringComparison.OrdinalIgnoreCase) Then
                         Dim rel As String = PathUtil.JoinDirFile(it.Directory, it.FileName)
                         Dim ve = Dx10Importer.FromDdsBytes(bytes, rel)
@@ -545,7 +543,7 @@ Partial Class Mainform_form
             If leidoCompleto Then
                 ReindexEntries(ctx)
                 RefreshGrid(ctx)
-                RebuildDirectoryTree(ctx) ' << NUEVO
+                RebuildDirectoryTree(ctx)
                 SetStatus("Opened", ctx)
             ElseIf ctx IsNot Nothing Then
                 ' Lectura incompleta: la pestaña se va. Ver la nota de la firma.
@@ -939,7 +937,7 @@ Partial Class Mainform_form
         If added > 0 Then
             ctx.Dirty = True
             RefreshGrid(ctx)
-            RebuildDirectoryTree(ctx) ' << NUEVO
+            RebuildDirectoryTree(ctx)
             SetStatus($"Inserted {added} archive(s).", ctx)
             UpdateButtonsForGame()
         Else
@@ -968,7 +966,7 @@ Partial Class Mainform_form
         Progreso(0, 100)
         ctx.Dirty = True
         RefreshGrid(ctx)
-        RebuildDirectoryTree(ctx) ' << NUEVO
+        RebuildDirectoryTree(ctx)
 
         SetStatus($"Deleted {val} archive(s).", ctx)
         UpdateButtonsForGame()
@@ -1023,7 +1021,7 @@ Partial Class Mainform_form
         ReindexEntries(ctx)
         ctx.Dirty = True
         RefreshGrid(ctx)
-        RebuildDirectoryTree(ctx) ' << NUEVO
+        RebuildDirectoryTree(ctx)
         SetStatus("Renamed 1 archive.", ctx)
         UpdateButtonsForGame()
     End Sub
@@ -1137,11 +1135,9 @@ Partial Class Mainform_form
                     Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
                         Max_Writed = ctx.Entries.Count
                         Count_Writed = 0
-                        ' ⛔ Try/Finally: el evento es Shared, o sea una raiz ESTATICA viva todo el proceso, y `Writed`
-                        ' es un metodo de INSTANCIA, asi que el delegate captura Me. Si `Write` sale por excepcion —disco
-                        ' lleno, DDS invalido, nombre largo: hay ~12 puntos que tiran— el RemoveHandler nunca corria y el
-                        ' Form quedaba enraizado con todos los payloads descomprimidos de la pestania (GBs). Y en el pack
-                        ' siguiente el RaiseEvent disparaba tambien a los handlers zombis, una vez por entrada.
+                        ' Try/Finally obligatorio: `Writed` es Shared (raiz estatica) y el handler es de
+                        ' instancia (captura Me); sin desenganchar, una excepcion en `Write` deja el Form
+                        ' enraizado y el pack siguiente dispara tambien al handler zombie.
                         AddHandler Ba2WriterDX10.Writed, AddressOf Writed
                         Try
                             Ba2WriterDX10.Write(fs, ves, optDX)
@@ -1170,11 +1166,9 @@ Partial Class Mainform_form
                     Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
                         Max_Writed = ctx.Entries.Count
                         Count_Writed = 0
-                        ' ⛔ Try/Finally: el evento es Shared, o sea una raiz ESTATICA viva todo el proceso, y `Writed`
-                        ' es un metodo de INSTANCIA, asi que el delegate captura Me. Si `Write` sale por excepcion —disco
-                        ' lleno, DDS invalido, nombre largo: hay ~12 puntos que tiran— el RemoveHandler nunca corria y el
-                        ' Form quedaba enraizado con todos los payloads descomprimidos de la pestania (GBs). Y en el pack
-                        ' siguiente el RaiseEvent disparaba tambien a los handlers zombis, una vez por entrada.
+                        ' Try/Finally obligatorio: `Writed` es Shared (raiz estatica) y el handler es de
+                        ' instancia (captura Me); sin desenganchar, una excepcion en `Write` deja el Form
+                        ' enraizado y el pack siguiente dispara tambien al handler zombie.
                         AddHandler Ba2WriterGNRL.Writed, AddressOf Writed
                         Try
                             Ba2WriterGNRL.Write(fs, vesG, optG)
@@ -1232,11 +1226,9 @@ Partial Class Mainform_form
                 Using fs As New FileStream(texPath, FileMode.Create, FileAccess.Write, FileShare.None)
                     Max_Writed = ctx.Entries.Count
                     Count_Writed = 0
-                    ' ⛔ Try/Finally: el evento es Shared, o sea una raiz ESTATICA viva todo el proceso, y `Writed`
-                    ' es un metodo de INSTANCIA, asi que el delegate captura Me. Si `Write` sale por excepcion —disco
-                    ' lleno, DDS invalido, nombre largo: hay ~12 puntos que tiran— el RemoveHandler nunca corria y el
-                    ' Form quedaba enraizado con todos los payloads descomprimidos de la pestania (GBs). Y en el pack
-                    ' siguiente el RaiseEvent disparaba tambien a los handlers zombis, una vez por entrada.
+                    ' Try/Finally obligatorio: `Writed` es Shared (raiz estatica) y el handler es de
+                    ' instancia (captura Me); sin desenganchar, una excepcion en `Write` deja el Form
+                    ' enraizado y el pack siguiente dispara tambien al handler zombie.
                     AddHandler Ba2WriterDX10.Writed, AddressOf Writed
                     Try
                         Ba2WriterDX10.Write(fs, vesTex, optDX2)
@@ -1255,11 +1247,9 @@ Partial Class Mainform_form
                 Using fs As New FileStream(genPath, FileMode.Create, FileAccess.Write, FileShare.None)
                     Max_Writed = ctx.Entries.Count
                     Count_Writed = 0
-                    ' ⛔ Try/Finally: el evento es Shared, o sea una raiz ESTATICA viva todo el proceso, y `Writed`
-                    ' es un metodo de INSTANCIA, asi que el delegate captura Me. Si `Write` sale por excepcion —disco
-                    ' lleno, DDS invalido, nombre largo: hay ~12 puntos que tiran— el RemoveHandler nunca corria y el
-                    ' Form quedaba enraizado con todos los payloads descomprimidos de la pestania (GBs). Y en el pack
-                    ' siguiente el RaiseEvent disparaba tambien a los handlers zombis, una vez por entrada.
+                    ' Try/Finally obligatorio: `Writed` es Shared (raiz estatica) y el handler es de
+                    ' instancia (captura Me); sin desenganchar, una excepcion en `Write` deja el Form
+                    ' enraizado y el pack siguiente dispara tambien al handler zombie.
                     AddHandler Ba2WriterGNRL.Writed, AddressOf Writed
                     Try
                         Ba2WriterGNRL.Write(fs, vesGen, optG2)
@@ -1290,8 +1280,8 @@ Partial Class Mainform_form
                 Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
                     Max_Writed = ctx.Entries.Count
                     Count_Writed = 0
-                    ' ⛔ Mismo caso que los cuatro de arriba: evento Shared + handler de instancia. El
-                    ' quinto sitio, el de BSA, tambien quedaba sin desenganchar si Write tiraba.
+                    ' Mismo motivo que los bloques DX10/GNRL de arriba: evento Shared + handler de
+                    ' instancia; sin desenganchar, el BSA tambien enraiza el Form.
                     AddHandler BsaWriter.Writed, AddressOf Writed
                     Try
                         BsaWriter.Write(fs, ves, opt)
@@ -1328,17 +1318,17 @@ Partial Class Mainform_form
         End Using
     End Function
 
-    ' ========= nuevos handlers: crear archivos =========
+    ' ========= Menú Archivo: crear BSA/BA2 =========
     Private Sub miCrearBSA_Click(sender As Object, e As EventArgs)
         Dim ctx = CreateEmptyTab(GameKindUI.SSE_BSA, Nothing)
-        RebuildDirectoryTree(ctx) ' << NUEVO
+        RebuildDirectoryTree(ctx)
         UpdateButtonsForGame()
         SetStatus("New BSA", ctx)
     End Sub
 
     Private Sub miCrearBA2_Click(sender As Object, e As EventArgs)
         Dim ctx = CreateEmptyTab(GameKindUI.FO4_BA2, Nothing)
-        RebuildDirectoryTree(ctx) ' << NUEVO
+        RebuildDirectoryTree(ctx)
         ctx.Fo4Type = Fo4Ba2Type.GNRL
         UpdateButtonsForGame()
         SetStatus("New BA2 (GNRL)", ctx)
@@ -1346,7 +1336,7 @@ Partial Class Mainform_form
 
     Private Sub miCrearBA2Tex_Click(sender As Object, e As EventArgs)
         Dim ctx = CreateEmptyTab(GameKindUI.FO4_BA2, Nothing)
-        RebuildDirectoryTree(ctx) ' << NUEVO
+        RebuildDirectoryTree(ctx)
         ctx.Fo4Type = Fo4Ba2Type.DX10
         UpdateButtonsForGame()
         SetStatus("New BA2 (DX10)", ctx)
@@ -1384,8 +1374,8 @@ Partial Class Mainform_form
     End Sub
 
     ''' <summary>
-    ''' Extrae entries releyendo del archivo en disco con BethesdaReader.ExtractToMemory.
-    ''' Si SourcePath no existe o un path no se encuentra en el archivo, cae a EntryView.Data.
+    ''' Extrae entries siempre desde EntryView.Data en memoria (nunca releyendo del archivo en disco):
+    ''' refleja ediciones no guardadas y evita I/O redundante.
     ''' </summary>
     Private Function ExtractEntries(baseDir As String, ctx As TabContext, entries As IEnumerable(Of EntryView)) As Integer
         If String.IsNullOrWhiteSpace(baseDir) OrElse ctx Is Nothing OrElse entries Is Nothing Then Return 0
