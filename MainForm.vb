@@ -45,28 +45,8 @@ Partial Class Mainform_form
         '   "a\b\c"  => ese directorio y sus subdirectorios
     End Class
 
-    ' Fila mostrada en la grilla
-    Private NotInheritable Class EntryView
-        Public Property Index As Integer
-        Public Property Directory As String
-        Public Property FileName As String
-        Public ReadOnly Property FullPath As String
-            Get
-                If String.IsNullOrEmpty(Directory) Then Return FileName
-                Return Directory.TrimEnd(InCorrect_Path_separator, Correct_Path_separator) & Correct_Path_separator & FileName
-            End Get
-        End Property
-        Public Property Data As Byte()
-        ' DX10 metadata
-        Public Property DxgiFormat As Integer
-        Public Property Width As Integer
-        Public Property Height As Integer
-        Public Property MipCount As Integer
-        Public Property Faces As Integer
-        Public Property IsCubemap As Boolean
-        ' BSA
-        Public Property PreferCompress As Boolean
-    End Class
+    ' La fila de la grilla (EntryView) vive en EntryView.vb: la logica de guardado y extraccion que
+    ' opera sobre ella esta en GuardadoDeArchive y no puede depender de un tipo privado del Form.
 
     ' ========= ctor =========
     ' Ordenamiento para la grilla sin “desaparecer” filas.
@@ -1114,38 +1094,12 @@ Partial Class Mainform_form
                                "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
                     End If
 
-                    Dim ves As New List(Of VirtualEntry)(texRows.Count)
-                    For Each e In texRows
-                        ' Asegurar metadata DX10 (si vino solo con bytes, intentamos parsear DDS)
-                        If (e.Width <= 0 OrElse e.Height <= 0 OrElse e.MipCount <= 0 OrElse e.DxgiFormat < 0 OrElse e.Data Is Nothing) Then
-                            Dim ve2 = Dx10Importer.FromDdsBytes(e.Data, e.FullPath)
-                            e.DxgiFormat = ve2.DxgiFormat : e.Width = ve2.Width : e.Height = ve2.Height
-                            e.MipCount = ve2.MipCount : e.Faces = ve2.Faces : e.IsCubemap = ve2.IsCubemap : e.Data = ve2.Data
-                        End If
-                        If e.Width <= 0 OrElse e.Height <= 0 OrElse e.MipCount <= 0 OrElse e.DxgiFormat < 0 Then
-                            Throw New InvalidDataException($"Missing DX10 metadada in '{e.FullPath}'.")
-                        End If
-                        ves.Add(New VirtualEntry With {
-              .Directory = e.Directory, .FileName = e.FileName, .Data = e.Data,
-              .DxgiFormat = e.DxgiFormat, .Width = e.Width, .Height = e.Height,
-              .MipCount = e.MipCount, .Faces = If(e.IsCubemap, 6, Math.Max(1, e.Faces)), .IsCubemap = e.IsCubemap
-            })
-                    Next
+                    Dim ves = GuardadoDeArchive.EntradasDx10(texRows)
                     Dim optDX As Ba2WriterDX10.Options = MakeDxOptionsFromConfig()
-                    Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
-                        Max_Writed = ctx.Entries.Count
-                        Count_Writed = 0
-                        ' Try/Finally obligatorio: `Writed` es Shared (raiz estatica) y el handler es de
-                        ' instancia (captura Me); sin desenganchar, una excepcion en `Write` deja el Form
-                        ' enraizado y el pack siguiente dispara tambien al handler zombie.
-                        AddHandler Ba2WriterDX10.Writed, AddressOf Writed
-                        Try
-                            Ba2WriterDX10.Write(fs, ves, optDX)
-                        Finally
-                            RemoveHandler Ba2WriterDX10.Writed, AddressOf Writed
-                        End Try
-                        Progreso(0, 100)
-                    End Using
+                    Max_Writed = ctx.Entries.Count
+                    Count_Writed = 0
+                    GuardadoDeArchive.EscribirDx10(outPath, ves, optDX, AddressOf Writed)
+                    Progreso(0, 100)
                     ctx.Dirty = False
                     SetStatus("Saved (DX10)", ctx)
                     UpdateButtonsForGame()
@@ -1158,25 +1112,12 @@ Partial Class Mainform_form
                         If MessageBox.Show(Me, $"Archive already exist: {outPath}" & Environment.NewLine & "¿Overwrite?",
                                "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
                     End If
-                    Dim vesG As New List(Of VirtualEntry)(genRows.Count)
-                    For Each e In genRows
-                        vesG.Add(New VirtualEntry With {.Directory = e.Directory, .FileName = e.FileName, .Data = e.Data})
-                    Next
+                    Dim vesG = GuardadoDeArchive.EntradasGnrl(genRows)
                     Dim optG As Ba2WriterGNRL.Options = MakeGnrlOptionsFromConfig()
-                    Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
-                        Max_Writed = ctx.Entries.Count
-                        Count_Writed = 0
-                        ' Try/Finally obligatorio: `Writed` es Shared (raiz estatica) y el handler es de
-                        ' instancia (captura Me); sin desenganchar, una excepcion en `Write` deja el Form
-                        ' enraizado y el pack siguiente dispara tambien al handler zombie.
-                        AddHandler Ba2WriterGNRL.Writed, AddressOf Writed
-                        Try
-                            Ba2WriterGNRL.Write(fs, vesG, optG)
-                        Finally
-                            RemoveHandler Ba2WriterGNRL.Writed, AddressOf Writed
-                        End Try
-                        Progreso(0, 100)
-                    End Using
+                    Max_Writed = ctx.Entries.Count
+                    Count_Writed = 0
+                    GuardadoDeArchive.EscribirGnrl(outPath, vesG, optG, AddressOf Writed)
+                    Progreso(0, 100)
                     ctx.Dirty = False
                     SetStatus("Saved (GNRL)", ctx)
                     UpdateButtonsForGame()
@@ -1205,59 +1146,13 @@ Partial Class Mainform_form
                              "Confirmar (General)", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
             End If
 
-            ' 1) DX10
-            Dim vesTex As New List(Of VirtualEntry)(texRows.Count)
-                For Each e In texRows
-                    If (e.Width <= 0 OrElse e.Height <= 0 OrElse e.MipCount <= 0 OrElse e.DxgiFormat < 0 OrElse e.Data Is Nothing) Then
-                        Dim ve2 = Dx10Importer.FromDdsBytes(e.Data, e.FullPath)
-                        e.DxgiFormat = ve2.DxgiFormat : e.Width = ve2.Width : e.Height = ve2.Height
-                        e.MipCount = ve2.MipCount : e.Faces = ve2.Faces : e.IsCubemap = ve2.IsCubemap : e.Data = ve2.Data
-                    End If
-                    If e.Width <= 0 OrElse e.Height <= 0 OrElse e.MipCount <= 0 OrElse e.DxgiFormat < 0 Then
-                        Throw New InvalidDataException($"Missing DX10 metadada in '{e.FullPath}'.")
-                    End If
-                    vesTex.Add(New VirtualEntry With {
-            .Directory = e.Directory, .FileName = e.FileName, .Data = e.Data,
-            .DxgiFormat = e.DxgiFormat, .Width = e.Width, .Height = e.Height,
-            .MipCount = e.MipCount, .Faces = If(e.IsCubemap, 6, Math.Max(1, e.Faces)), .IsCubemap = e.IsCubemap
-          })
-                Next
+                ' Una sola accion del usuario que escribe DOS archives seguidos. Ver GuardarFo4Split.
                 Dim optDX2 As Ba2WriterDX10.Options = MakeDxOptionsFromConfig()
-                Using fs As New FileStream(texPath, FileMode.Create, FileAccess.Write, FileShare.None)
-                    Max_Writed = ctx.Entries.Count
-                    Count_Writed = 0
-                    ' Try/Finally obligatorio: `Writed` es Shared (raiz estatica) y el handler es de
-                    ' instancia (captura Me); sin desenganchar, una excepcion en `Write` deja el Form
-                    ' enraizado y el pack siguiente dispara tambien al handler zombie.
-                    AddHandler Ba2WriterDX10.Writed, AddressOf Writed
-                    Try
-                        Ba2WriterDX10.Write(fs, vesTex, optDX2)
-                    Finally
-                        RemoveHandler Ba2WriterDX10.Writed, AddressOf Writed
-                    End Try
-                    Progreso(0, 100)
-                End Using
-
-                ' 2) GNRL
-                Dim vesGen As New List(Of VirtualEntry)(genRows.Count)
-                For Each e In genRows
-                    vesGen.Add(New VirtualEntry With {.Directory = e.Directory, .FileName = e.FileName, .Data = e.Data})
-                Next
                 Dim optG2 As Ba2WriterGNRL.Options = MakeGnrlOptionsFromConfig()
-                Using fs As New FileStream(genPath, FileMode.Create, FileAccess.Write, FileShare.None)
-                    Max_Writed = ctx.Entries.Count
-                    Count_Writed = 0
-                    ' Try/Finally obligatorio: `Writed` es Shared (raiz estatica) y el handler es de
-                    ' instancia (captura Me); sin desenganchar, una excepcion en `Write` deja el Form
-                    ' enraizado y el pack siguiente dispara tambien al handler zombie.
-                    AddHandler Ba2WriterGNRL.Writed, AddressOf Writed
-                    Try
-                        Ba2WriterGNRL.Write(fs, vesGen, optG2)
-                    Finally
-                        RemoveHandler Ba2WriterGNRL.Writed, AddressOf Writed
-                    End Try
-                    Progreso(0, 100)
-                End Using
+                Max_Writed = ctx.Entries.Count
+                Count_Writed = 0
+                GuardadoDeArchive.GuardarFo4Split(texPath, genPath, texRows, genRows, optDX2, optG2, AddressOf Writed)
+                Progreso(0, 100)
 
                 ctx.Dirty = False
                 SetStatus("Saved (Both)", ctx)
@@ -1266,10 +1161,7 @@ Partial Class Mainform_form
 
             Else
                 ' ===== Skyrim SE (BSA) =====
-                Dim ves As New List(Of VirtualEntry)(ctx.Entries.Count)
-                For Each e In ctx.Entries
-                    ves.Add(New VirtualEntry With {.Directory = e.Directory, .FileName = e.FileName, .Data = e.Data, .PreferCompress = True})
-                Next
+                Dim ves = GuardadoDeArchive.EntradasBsa(ctx.Entries)
 
                 If System.IO.File.Exists(outPath) Then
                     If MessageBox.Show(Me, $"Archive already exist: {outPath}" & Environment.NewLine & "¿Overwrite?",
@@ -1277,19 +1169,10 @@ Partial Class Mainform_form
                 End If
 
                 Dim opt As BsaWriter.Options = MakeBsaOptionsFromConfig()
-                Using fs As New FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None)
-                    Max_Writed = ctx.Entries.Count
-                    Count_Writed = 0
-                    ' Mismo motivo que los bloques DX10/GNRL de arriba: evento Shared + handler de
-                    ' instancia; sin desenganchar, el BSA tambien enraiza el Form.
-                    AddHandler BsaWriter.Writed, AddressOf Writed
-                    Try
-                        BsaWriter.Write(fs, ves, opt)
-                    Finally
-                        RemoveHandler BsaWriter.Writed, AddressOf Writed
-                    End Try
-                    Progreso(0, 100)
-                End Using
+                Max_Writed = ctx.Entries.Count
+                Count_Writed = 0
+                GuardadoDeArchive.EscribirBsa(outPath, ves, opt, AddressOf Writed)
+                Progreso(0, 100)
 
                 ctx.Dirty = False
                 SetStatus("Saved (BSA)", ctx)
@@ -1381,24 +1264,7 @@ Partial Class Mainform_form
         If String.IsNullOrWhiteSpace(baseDir) OrElse ctx Is Nothing OrElse entries Is Nothing Then Return 0
         Dim count As Integer = 0
         Try
-            Dim max = entries.Count
-            Dim val = 0
-            For Each ev In entries
-                val += 1
-                Progreso(val, max)
-                If ev Is Nothing Then Continue For
-                Dim rel As String = PathUtil.JoinDirFile(ev.Directory, ev.FileName)
-                ' Extraer siempre desde memoria: refleja ediciones no guardadas y evita I/O redundante
-                Dim bytes As Byte() = ev.Data
-                If bytes Is Nothing Then Continue For
-
-                Dim relOs As String = rel.Replace(InCorrect_Path_separator, Path.DirectorySeparatorChar).Replace(Correct_Path_separator, Path.DirectorySeparatorChar)
-                Dim outPath As String = Path.Combine(baseDir, relOs)
-                Dim outDir As String = Path.GetDirectoryName(outPath)
-                If Not String.IsNullOrEmpty(outDir) AndAlso Not Directory.Exists(outDir) Then Directory.CreateDirectory(outDir)
-                File.WriteAllBytes(outPath, bytes)
-                count += 1
-            Next
+            count = GuardadoDeArchive.ExtraerAlDisco(baseDir, entries, Sub(val, max) Progreso(val, max))
         Catch ex As Exception
             MsgBox("Error extracting archive:" + vbCrLf + ex.Message, vbCritical, "Error")
         Finally

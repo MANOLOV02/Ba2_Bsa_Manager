@@ -22,6 +22,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Tools/Ba2ManagerSaveGate: las leyes de guardado (GuardarConCopia en las cinco ramas) y de
+         extraccion (el .dds DX10 sale con cabecera) viven en `GuardadoDeArchive`, que es Friend y asi
+         se queda: el gate entra por InternalsVisibleTo y la superficie publica de la app no cambia.
+         Ver 00-reglas-self-tests-no-van-en-el-binario. -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Ba2ManagerSaveGate</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="MainForm.vb">
       <SubType>Form</SubType>
     </Compile>
