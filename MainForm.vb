@@ -455,7 +455,7 @@ Partial Class Mainform_form
         Dim tp = tab.TabPages(index)
         Dim ctx = TryCast(tp.Tag, TabContext)
         If ctx IsNot Nothing AndAlso ctx.Dirty Then
-            Dim ans = MessageBox.Show(Me, "There is unsaved changes. ¿Save before close?", "Close tab", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question)
+            Dim ans = MessageBox.Show(Me, "There are unsaved changes. Save before closing?", "Close tab", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question)
             If ans = DialogResult.Cancel Then Return
             If ans = DialogResult.Yes Then
                 miGuardar_Click(Me, EventArgs.Empty)
@@ -895,7 +895,7 @@ Partial Class Mainform_form
                             Else
                                 ' GNRL
                                 If isDds Then
-                                    If MessageBox.Show(Me, $"This BA2 es GNRL (general).{fileName} was ignored", "FO4 GNRL", MessageBoxButtons.OKCancel, MessageBoxIcon.Information) = DialogResult.Cancel Then
+                                    If MessageBox.Show(Me, $"This BA2 is GNRL (general). {fileName} was ignored", "FO4 GNRL", MessageBoxButtons.OKCancel, MessageBoxIcon.Information) = DialogResult.Cancel Then
                                         Exit For
                                     End If
                                     Continue For
@@ -927,7 +927,7 @@ Partial Class Mainform_form
     Private Sub btnRemove_Click(sender As Object, e As EventArgs)
         Dim ctx = CurrentContext() : If ctx Is Nothing Then Return
         Dim grid = CurrentGrid() : If grid Is Nothing OrElse grid.SelectedRows.Count = 0 Then Return
-        If MessageBox.Show(Me, "¿Remove selected elements?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
+        If MessageBox.Show(Me, "Remove the selected elements?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
 
         Dim toRemove As New List(Of EntryView)
         For Each r As DataGridViewRow In grid.SelectedRows
@@ -1090,7 +1090,7 @@ Partial Class Mainform_form
                 If texRows.Count > 0 AndAlso genRows.Count = 0 Then
                     ' === Solo texturas → DX10 ===
                     If System.IO.File.Exists(outPath) Then
-                        If MessageBox.Show(Me, $"Archive already exist: {outPath}" & Environment.NewLine & "¿Overwrite?",
+                        If MessageBox.Show(Me, $"Archive already exists: {outPath}" & Environment.NewLine & "Overwrite?",
                                "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
                     End If
 
@@ -1109,7 +1109,7 @@ Partial Class Mainform_form
                 If genRows.Count > 0 AndAlso texRows.Count = 0 Then
                     ' === Solo generales → GNRL ===
                     If System.IO.File.Exists(outPath) Then
-                        If MessageBox.Show(Me, $"Archive already exist: {outPath}" & Environment.NewLine & "¿Overwrite?",
+                        If MessageBox.Show(Me, $"Archive already exists: {outPath}" & Environment.NewLine & "Overwrite?",
                                "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
                     End If
                     Dim vesG = GuardadoDeArchive.EntradasGnrl(genRows)
@@ -1126,9 +1126,9 @@ Partial Class Mainform_form
 
                 ' === Mezcla (dds + no-dds) → dividir ===
                 Dim choice = MessageBox.Show(Me,
-          "This set contains texturess (.dds) y general archives." & Environment.NewLine &
+          "This set contains textures (.dds) and general archives." & Environment.NewLine &
           "BA2 format does not allow to mix them in a single file." & Environment.NewLine & Environment.NewLine &
-          "¿Save to two files?: '... - Textures.ba2' y '... - Main.ba2'?",
+          "Save to two files: '... - Textures.ba2' and '... - Main.ba2'?",
           "Fallout 4 — Split file", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Information)
                 If choice <> DialogResult.Yes Then
                     Throw New InvalidOperationException("Save canceled (DX10/GNRL Mix).")
@@ -1138,11 +1138,11 @@ Partial Class Mainform_form
                 SuggestFo4Paths(outPath, True, True, texPath, genPath)
 
                 If System.IO.File.Exists(texPath) Then
-                    If MessageBox.Show(Me, $"Archive already exist: {texPath}" & Environment.NewLine & "¿Overwrite?",
+                    If MessageBox.Show(Me, $"Archive already exists: {texPath}" & Environment.NewLine & "Overwrite?",
                              "Confirm (Textures)", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
                 End If
                 If System.IO.File.Exists(genPath) Then
-                If MessageBox.Show(Me, $"Archive already exist: {genPath}" & Environment.NewLine & "¿Overwrite?",
+                If MessageBox.Show(Me, $"Archive already exists: {genPath}" & Environment.NewLine & "Overwrite?",
                              "Confirmar (General)", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
             End If
 
@@ -1164,7 +1164,7 @@ Partial Class Mainform_form
                 Dim ves = GuardadoDeArchive.EntradasBsa(ctx.Entries)
 
                 If System.IO.File.Exists(outPath) Then
-                    If MessageBox.Show(Me, $"Archive already exist: {outPath}" & Environment.NewLine & "¿Overwrite?",
+                    If MessageBox.Show(Me, $"Archive already exists: {outPath}" & Environment.NewLine & "Overwrite?",
                              "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
                 End If
 
