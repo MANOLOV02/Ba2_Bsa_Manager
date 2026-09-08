@@ -11,6 +11,14 @@
 	<PublishDir>bin\$(Configuration)\$(TargetFramework)\publish\</PublishDir>
   </PropertyGroup>
 
+  <!-- Identidad que ve el usuario: Propiedades del archivo en Windows y el volcado de ensamblados
+       de un reporte de caida. El NUMERO no esta aca: sale del Directory.Build.props del repo. -->
+  <PropertyGroup>
+    <Product>Bethesda BSA / BA2 Manager</Product>
+    <AssemblyTitle>Bethesda BSA / BA2 Manager</AssemblyTitle>
+    <Description>Archive browser and builder for Bethesda BSA (SSE) and BA2 (FO4) files.</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <Import Include="System.Data" />
     <Import Include="System.Drawing" />
@@ -82,4 +90,12 @@
          nueva, va aca Y en el for de CopyPublish.bat. -->
     <Content Include="licenses\MIT.txt" Link="licenses\MIT.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- ⛔ LINKEADO, NO REFERENCIADO, igual que CrashReport y por un motivo todavia mas fuerte: uno de los
+       dos modos de falla que VersionGate detecta es que FO4_Base_Library.dll NO CARGUE (MEDIDO: con una lib
+       de version MENOR que la que este exe pide, el primer uso tira FileNotFoundException). Un chequeo que
+       viviera adentro de la libreria se caeria junto con ella. Ver Shared\VersionGate.vb. -->
+  <ItemGroup>
+    <Compile Include="..\FO4_Base_Library\Shared\VersionGate.vb" Link="VersionGate.vb" />
+  </ItemGroup>
+
 </Project>

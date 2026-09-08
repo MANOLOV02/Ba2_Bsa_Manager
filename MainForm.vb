@@ -134,6 +134,9 @@ Partial Class Mainform_form
     End Class
     Public Sub New()
         InitializeComponent()
+        ' Nombre del Designer + version REAL del ensamblado. Aca y no en el .Designer.vb, que el disenador
+        ' reescribe.
+        Me.Text = VersionGate.TituloConVersion(Me.Text)
         Me.AutoScaleMode = AutoScaleMode.Dpi
         Me.AutoScaleDimensions = New SizeF(96.0F, 96.0F)
 

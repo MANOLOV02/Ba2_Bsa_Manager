@@ -25,5 +25,18 @@ Namespace My
 
     Partial Friend Class MyApplication
 
+        ''' <summary>⛔ ACÁ NO SE TOCA NADA DE NINGÚN DLL PROPIO: este cuerpo corre antes de que exista la
+        ''' ventana principal y el JIT resuelve sus referencias antes de la primera línea. Lo único que hay es
+        ''' el chequeo de instalación, que se compila DENTRO de este exe (fuente linkeada, ver el .vbproj).
+        ''' <para>Este exe se lleva <c>BSA_BA2_Library_DLL</c>, que es de OTRO repo y se versiona por separado
+        ''' — y que además comparte con Nif Explorer. Actualizar una sola de las dos herramientas es
+        ''' exactamente la instalación mezclada que esto ataja. Ver <c>Shared\VersionGate.vb</c>.</para></summary>
+        Private Sub MyApplication_Startup(sender As Object, e As StartupEventArgs) Handles Me.Startup
+            If Not VersionGate.VerificarInstalacion() Then
+                Environment.ExitCode = 1
+                e.Cancel = True
+            End If
+        End Sub
+
     End Class
 End Namespace
