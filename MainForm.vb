@@ -495,27 +495,25 @@ Partial Class Mainform_form
             Using fs As New FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)
                 Dim reader As New BethesdaReader(fs, Encoding.UTF8)
                 Dim idx As Integer = 0
+                ' r19c-05: DX10 records whose tile byte is not 8, per value: kept as is on save, reported when the tab opens.
+                Dim otherTiles As New SortedDictionary(Of Byte, Integer)
                 Dim max = reader.EntriesFiles.Count
                 Dim val = 0
                 For Each it In reader.EntriesFiles
                     val += 1
                     Progreso(val, max)
                     Dim bytes = reader.ExtractToMemory(it.Index)
-                    If kind = GameKindUI.FO4_BA2 AndAlso fo4Type = Fo4Ba2Type.DX10 AndAlso it.FileName.EndsWith(".dds", StringComparison.OrdinalIgnoreCase) Then
-                        Dim rel As String = PathUtil.JoinDirFile(it.Directory, it.FileName)
-                        Dim ve = Dx10Importer.FromDdsBytes(bytes, rel)
-                        Dim ev As New EntryView With {
-                            .Index = idx, .Directory = ve.Directory, .FileName = ve.FileName, .Data = ve.Data,
-                            .DxgiFormat = ve.DxgiFormat, .Width = ve.Width, .Height = ve.Height,
-                            .MipCount = ve.MipCount, .Faces = ve.Faces, .IsCubemap = ve.IsCubemap
-                        }
-                        ctx.Entries.Add(ev)
-                    Else
-                        Dim ev As New EntryView With {.Index = idx, .Directory = it.Directory, .FileName = it.FileName, .Data = bytes, .PreferCompress = True}
-                        ctx.Entries.Add(ev)
-                    End If
+                    Dim dx10Texture = kind = GameKindUI.FO4_BA2 AndAlso fo4Type = Fo4Ba2Type.DX10 AndAlso it.FileName.EndsWith(".dds", StringComparison.OrdinalIgnoreCase)
+                    Dim ev = EntryView.FromArchiveEntry(it, bytes, idx, dx10Texture)
+                    If dx10Texture AndAlso ev.TileMode <> 8 Then otherTiles(ev.TileMode) = If(otherTiles.ContainsKey(ev.TileMode), otherTiles(ev.TileMode), 0) + 1
+                    ctx.Entries.Add(ev)
                     idx += 1
                 Next
+                If otherTiles.Count > 0 Then
+                    Dim lines = otherTiles.Select(Function(kv) $"{kv.Value} texture{If(kv.Value = 1, "", "s")} with tile mode {kv.Key}")
+                    MessageBox.Show(Me, String.Join(Environment.NewLine, lines) & Environment.NewLine &
+                                    "Kept as is on save; the game ignores this byte.", "Tile mode", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                End If
 
             End Using
             leidoCompleto = True
@@ -1026,6 +1024,7 @@ Partial Class Mainform_form
             match.MipCount = ve.MipCount
             match.Faces = ve.Faces
             match.IsCubemap = ve.IsCubemap
+            match.TileMode = ve.TileMode
         Else
             ' Agregar nuevo
             Dim ev As New EntryView With {
@@ -1039,7 +1038,8 @@ Partial Class Mainform_form
                 .Height = ve.Height,
                 .MipCount = ve.MipCount,
                 .Faces = ve.Faces,
-                .IsCubemap = ve.IsCubemap
+                .IsCubemap = ve.IsCubemap,
+                .TileMode = ve.TileMode
             }
             ctx.Entries.Add(ev)
         End If

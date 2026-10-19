@@ -63,7 +63,8 @@ Friend NotInheritable Class GuardadoDeArchive
             Return New VirtualEntry With {
                 .Directory = e.Directory, .FileName = e.FileName, .Data = e.Data,
                 .DxgiFormat = e.DxgiFormat, .Width = e.Width, .Height = e.Height,
-                .MipCount = e.MipCount, .Faces = If(e.IsCubemap, 6, Math.Max(1, e.Faces)), .IsCubemap = e.IsCubemap
+                .MipCount = e.MipCount, .Faces = If(e.IsCubemap, 6, Math.Max(1, e.Faces)), .IsCubemap = e.IsCubemap,
+                .TileMode = e.TileMode
             }
         End If
 
@@ -76,7 +77,8 @@ Friend NotInheritable Class GuardadoDeArchive
         Return New VirtualEntry With {
             .Directory = e.Directory, .FileName = e.FileName, .Data = ve2.Data,
             .DxgiFormat = ve2.DxgiFormat, .Width = ve2.Width, .Height = ve2.Height,
-            .MipCount = ve2.MipCount, .Faces = If(ve2.IsCubemap, 6, Math.Max(1, ve2.Faces)), .IsCubemap = ve2.IsCubemap
+            .MipCount = ve2.MipCount, .Faces = If(ve2.IsCubemap, 6, Math.Max(1, ve2.Faces)), .IsCubemap = ve2.IsCubemap,
+            .TileMode = e.TileMode
         }
     End Function
 

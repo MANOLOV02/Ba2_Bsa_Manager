@@ -35,6 +35,33 @@ Friend NotInheritable Class EntryView
     Public Property MipCount As Integer
     Public Property Faces As Integer
     Public Property IsCubemap As Boolean
+    ''' <summary>The DX10 record's tile byte, kept on save (VirtualEntry.TileMode; user decision r19c-05). 8 for a new row.</summary>
+    Public Property TileMode As Byte = 8
     ' BSA
     Public Property PreferCompress As Boolean
+
+    ''' <summary>THE row of an archive entry, as the Manager builds it when it opens an archive (MainForm.OpenArchiveInNewTab; and
+    ''' Tools\Ba2ManagerSaveGate H4 calls this same function): a .dds of a BA2 DX10 -&gt; the stripped payload and the metadata of
+    ''' Dx10Importer.FromDdsBytes, plus the record's tile byte, kept on save (r19c-05; 8 when the entry has no DX10 record); any
+    ''' other entry -&gt; the whole file, opaque, compressed on save when the format allows.</summary>
+    ''' <param name="dx10Texture">The entry is a .dds of a Fallout 4 BA2 DX10 (the tab's kind and the file's extension).</param>
+    Friend Shared Function FromArchiveEntry(it As ArchiveEntry, bytes As Byte(), index As Integer, dx10Texture As Boolean) As EntryView
+        If Not dx10Texture Then
+            Return New EntryView With {.Index = index, .Directory = it.Directory, .FileName = it.FileName, .Data = bytes, .PreferCompress = True}
+        End If
+        Dim ve = Dx10Importer.FromDdsBytes(bytes, PathUtil.JoinDirFile(it.Directory, it.FileName))
+#If DEBUG Then
+        ' Ba2ManagerSaveGate H4's directed mutant (the BA2 library's switch, Ba2GateMutants): the row forgets the record's tile byte.
+        If Ba2GateMutants.IsOn("mgr-entry-tile8") Then
+            Return New EntryView With {.Index = index, .Directory = ve.Directory, .FileName = ve.FileName, .Data = ve.Data, .DxgiFormat = ve.DxgiFormat,
+                .Width = ve.Width, .Height = ve.Height, .MipCount = ve.MipCount, .Faces = ve.Faces, .IsCubemap = ve.IsCubemap, .TileMode = 8}
+        End If
+#End If
+        Return New EntryView With {
+            .Index = index, .Directory = ve.Directory, .FileName = ve.FileName, .Data = ve.Data,
+            .DxgiFormat = ve.DxgiFormat, .Width = ve.Width, .Height = ve.Height,
+            .MipCount = ve.MipCount, .Faces = ve.Faces, .IsCubemap = ve.IsCubemap,
+            .TileMode = If(it.Dx10Record.HasValue, it.Dx10Record.Value.TileMode, CByte(8))
+        }
+    End Function
 End Class
